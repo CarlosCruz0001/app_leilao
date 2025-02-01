@@ -1,0 +1,63 @@
+.container {
+    padding: 20px;
+  }
+  
+  .title {
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+  .containerInput {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;  
+    align-items: center; 
+  }
+
+  .input {
+    width: 50%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 5px;   
+  }
+  
+  .roleContainer {
+    display: flex;
+    justify-content: center; 
+    gap: 10px; 
+    margin-bottom: 20px;
+  }
+  
+  .roleButton {
+    padding: 10px 20px;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .selectedRole {
+    background-color: #4CAF50;
+    color: white;
+  }
+  
+  .signupButton {
+    padding: 10px 20px;
+    background-color: #008CBA;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    cursor: pointer;
+  }
+  
+  .signupButton:hover {
+    background-color: #005f6b;
+  }
+
+  .divCadastrar {
+    display: flex;
+    justify-content: center;  
+    align-items: center;     
+    width: 100%;              
+  }
+  

@@ -1,0 +1,86 @@
+.container {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  gap: 20px;
+}
+
+.containerLeiloes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  width: 50%;
+}
+
+.userGreeting {
+  font-size: 1.5rem; 
+  font-weight: bold; 
+  color: #4CAF50; 
+  margin-top: 20px; 
+  text-align: center; 
+  padding: 10px; 
+  background-color: #f1f1f1; 
+  border-radius: 8px; 
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); 
+}
+
+
+.containerBotoes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  gap: 10px;
+  width: 30%;
+}
+
+.botoes {
+  display: flex;
+  gap: 10px;
+}
+
+.button,
+.buttonCriar {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: 0.3s;
+}
+
+.button {
+  background-color: #007bff;
+  color: white;
+}
+
+.button:hover {
+  background-color: #0056b3;
+}
+
+.buttonCriar {
+  background-color: #28a745;
+  color: white;
+}
+
+.buttonCriar:hover {
+  background-color: #218838;
+}
+
+@media (max-width: 768px) {
+  .container {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .containerLeiloes,
+  .containerBotoes {
+    width: 90%;
+  }
+}
