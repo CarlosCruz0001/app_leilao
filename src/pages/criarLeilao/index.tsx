@@ -100,6 +100,11 @@ const CreateAuctionScreen = () => {
       console.log("Imagem enviada com sucesso:", imageUrl);
   
       console.log('Inserindo leilão na tabela "leilao"...');
+  
+      // Ajustar a data para UTC-4
+      const adjustedDate = new Date(dataHoraRealizacao);
+      adjustedDate.setHours(adjustedDate.getHours() - 4); // Subtrai 4 horas para UTC-4
+  
       const { error } = await supabase.from("leilao").insert([
         {
           titulo: title,
@@ -110,7 +115,7 @@ const CreateAuctionScreen = () => {
           data_hora_criacao: new Date().toISOString(),
           status_id: 1,
           id_vendedor: userId, // Usando userId corretamente
-          data_hora_realizacao: dataHoraRealizacao, // Usando a data escolhida pelo usuário
+          data_hora_realizacao: adjustedDate.toISOString(), // Usando a data ajustada para UTC-4
         },
       ]);
   
@@ -137,6 +142,7 @@ const CreateAuctionScreen = () => {
       setError((err as Error).message || "Ocorreu um erro!");
     }
   };
+  
   
 
   const handleImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
