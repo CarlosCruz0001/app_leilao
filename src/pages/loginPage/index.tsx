@@ -1,20 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useContext } from "react";
-import { SocketContext } from "../../context/SocketContext";  
-import styles from './style.module.css';
+import { SocketContext } from "../../context/SocketContext";
+import styles from "./style.module.css";
 
 const LoginScreen = () => {
-  const { supabase } = useContext(SocketContext);  
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const { supabase } = useContext(SocketContext);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
   const navigate = useNavigate();
 
   const handleLogin = async () => {
-    setError('');
-    
+    setError("");
+
     // Tentando autenticar com o Supabase
     const { data, error: loginError } = await supabase.auth.signInWithPassword({
       email,
@@ -26,7 +26,7 @@ const LoginScreen = () => {
       setError(loginError.message);
     } else {
       // Caso o login seja bem-sucedido
-      alert('Login bem-sucedido!');
+      alert("Login bem-sucedido!");
       navigate("/"); // Redirecionando para a página inicial ou dashboard
     }
   };
@@ -53,7 +53,12 @@ const LoginScreen = () => {
       {error && <p className={styles.error}>{error}</p>}
       <button className={styles.loginButton} onClick={handleLogin}>
         Entrar
+      </button> 
+      <div>
+      <button className={styles.backButton} onClick={() => navigate("/")}>
+        Voltar para a página inicial
       </button>
+      </div>
     </div>
   );
 };

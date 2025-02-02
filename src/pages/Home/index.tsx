@@ -65,7 +65,7 @@ const Home = () => {
   // Garantir que o redirecionamento para login ocorra apenas após a carga completa
   useEffect(() => {
     if (!loading && !user) {
-      navigate("/login"); // Redireciona para o login caso o usuário não esteja autenticado
+      // navigate("/login"); // Redireciona para o login caso o usuário não esteja autenticado
     }
   }, [loading, user, navigate]);
   

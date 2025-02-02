@@ -46,4 +46,18 @@
   .loginButton:hover {
     background-color: #005f6b;
   }
+  .backButton {
+    margin-top: 10px;
+    padding: 10px 20px;
+    font-size: 16px;
+    color: #fff;
+    background-color: #555; /* Cor diferente para destacar do botão de login */
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+  }
   
+  .backButton:hover {
+    background-color: #444;
+  }

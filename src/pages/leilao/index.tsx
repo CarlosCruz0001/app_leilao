@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useContext, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { SocketContext } from "../../context/SocketContext";
-import { Bid } from "../../models/Bid";
 import { Auction } from "../../models/Auction";
 import styles from "./style.module.css";
 
@@ -10,119 +9,144 @@ interface Vendedor {
 }
 
 function AuctionPage() {
-  const { id, userId } = useParams<{ id: string; userId: string }>(); // id do leilão e userId do usuário
-  const [currentBid, setCurrentBid] = useState<number | null>(null);
-  const [bids, setBids] = useState<Bid[]>([]);
+  const { id, userId } = useParams<{ id: string; userId: string }>();
   const [leilao, setLeilao] = useState<Auction | null>(null);
   const [vendedor, setVendedor] = useState<Vendedor | null>(null);
   const [user, setUser] = useState<Vendedor | null>(null);
   const [userLoading, setUserLoading] = useState<boolean>(true);
-  const { supabase } = useContext(SocketContext);
-  const navigate = useNavigate();
+  const { supabase, bids, currentBid, setBids, setCurrentBid } =
+    useContext(SocketContext);
 
   const fetchLeilaoData = useCallback(async () => {
+    console.log("Fetching auction data...");
     if (!id) return;
-    console.log("Buscando dados do leilão para o ID:", id);
     const { data, error } = await supabase
       .from("leilao")
-      .select(
-        "titulo, descricao, valor_inicial, prazo_max_minutos, data_hora_realizacao, status_id, id_vendedor, foto"
-      )
+      .select("*")
       .eq("id", id)
       .single();
 
-    if (error) {
-      console.error("Erro ao buscar dados do leilão:", error);
-    } else {
-      console.log("Dados do leilão recebidos:", data);
+    if (!error && data) {
       setLeilao(data);
       setCurrentBid(data.valor_inicial);
+      console.log("Auction data fetched:", data);
+    } else {
+      console.error("Error fetching auction data:", error);
     }
-  }, [supabase, id]);
+  }, [supabase, id, setCurrentBid]);
 
   const fetchVendedorData = useCallback(async () => {
+    console.log("Fetching seller data...");
     if (!leilao?.id_vendedor) return;
-    console.log("Buscando dados do vendedor para o ID:", leilao.id_vendedor);
     const { data, error } = await supabase
       .from("usuario")
       .select("nome")
       .eq("id", leilao.id_vendedor)
       .single();
 
-    if (error) {
-      console.error("Erro ao buscar dados do vendedor:", error);
-    } else {
-      console.log("Dados do vendedor recebidos:", data);
+    if (!error && data) {
       setVendedor(data);
+      console.log("Seller data fetched:", data);
+    } else {
+      console.error("Error fetching seller data:", error);
     }
   }, [supabase, leilao?.id_vendedor]);
 
   const fetchUserData = useCallback(async () => {
+    console.log("Fetching user data...");
     if (!userId) return;
-    console.log("Buscando dados do usuário para o ID:", userId);
     setUserLoading(true);
-    const { data, error, count } = await supabase
+    const { data, error } = await supabase
       .from("usuario")
       .select("nome")
-      .eq("id", userId) // Usando o userId da URL
+      .eq("id", userId)
       .single();
 
     setUserLoading(false);
-
-    if (error) {
-      console.error("Erro ao buscar dados do usuário:", error);
+    if (!error && data) {
+      setUser(data);
+      console.log("User data fetched:", data);
     } else {
-      if (count === 0) {
-        console.log("Nenhum usuário encontrado com o ID fornecido.");
-      } else if (data) {
-        console.log("Dados do usuário recebidos:", data);
-        setUser(data);
-      }
+      console.error("Error fetching user data:", error);
     }
   }, [supabase, userId]);
 
-  const handleBidSubmit = () => {
-    if (userLoading) {
-      alert("Aguarde, estamos carregando seus dados...");
+  const fetchBids = useCallback(async () => {
+    console.log("Fetching bids...");
+    if (!id) return;
+    const { data, error } = await supabase
+      .from("lances")
+      .select("id, value, user_id, username, created_at, auction_id")
+      .eq("auction_id", id)
+      .order("created_at", { ascending: false }); // Ordena decrescente
+  
+    if (!error && data) {
+      setBids(data); // Atualiza os lances com a lista ordenada
+      setCurrentBid(data[0]?.value || leilao?.valor_inicial || 0); // Define o maior lance ou o lance inicial
+      console.log("Bids fetched:", data);
+    } else {
+      console.error("Error fetching bids:", error);
+    }
+  }, [supabase, id, leilao?.valor_inicial, setCurrentBid, setBids]);
+  
+
+  const handleBidSubmit = async () => {
+    console.log("Handling bid submission...");
+    if (!user || !id) {
+      alert("Erro ao processar lance. Usuário não identificado.");
+      console.error("User data is missing.");
       return;
     }
-
-    if (!user) {
-      alert("Não foi possível identificar o usuário.");
-      return;
+  
+    // Verifica se há lances existentes
+    let newBidValue = 0;
+  
+    if (bids.length === 0) {
+      // Se não houver lances, o primeiro lance será o valor inicial
+      newBidValue = leilao?.valor_inicial || 0;
+      console.log(`Primeiro lance, valor inicial: R$ ${newBidValue.toFixed(2)}`);
+    } else {
+      // Caso contrário, adiciona R$ 10 ao maior lance
+      const highestBid = bids[0].value; // O maior lance é o primeiro da lista (decrescente)
+      newBidValue = highestBid + 10;
+      console.log(`Lance subsequente, valor: R$ ${newBidValue.toFixed(2)}`);
     }
-
-    if (currentBid === null) {
-      console.log("Tentativa de lance antes de carregar o valor inicial.");
-      return;
+  
+    console.log(`Submitting bid with value: ${newBidValue}`);
+  
+    const { error } = await supabase.from("lances").insert({
+      auction_id: id,
+      user_id: userId,
+      username: user.nome,
+      value: newBidValue,
+    });
+  
+    if (error) {
+      console.error("Error inserting bid:", error);
+      alert("Falha ao processar o lance.");
+    } else {
+      alert(`Lance de R$ ${newBidValue.toFixed(2)} registrado!`);
+      fetchBids(); // Atualiza a lista de lances após o novo lance ser inserido
     }
-
-    const newBid: Bid = {
-      username: user.nome, // Usando o nome do usuário carregado
-      value: currentBid + 10,
-      auctionId: id || "", // id do leilão
-    };
-
-    console.log("Novo lance calculado:", newBid);
-    setCurrentBid(newBid.value);
-    setBids([...bids, newBid]);
-
-    alert(`Lance de R$ ${newBid.value.toFixed(2)} aceito!`);
   };
+  
 
   useEffect(() => {
-    console.log("Carregando dados do leilão...");
+    console.log("useEffect triggered - Fetching initial data...");
     fetchLeilaoData();
-    fetchUserData(); // Busca os dados do usuário logado
-  }, [fetchLeilaoData, fetchUserData]);
-
+    fetchUserData();
+    fetchBids(); // Busca lances iniciais
+  }, [fetchLeilaoData, fetchUserData, fetchBids]);
+  
   useEffect(() => {
     if (leilao) {
-      console.log("Dados do leilão carregados:", leilao);
-      fetchVendedorData(); // Busca os dados do vendedor quando o leilão for carregado
+      console.log("Auction data received, fetching seller...");
+      fetchVendedorData();
     }
   }, [fetchVendedorData, leilao]);
-
+  
+ 
+  
   return (
     <div className={styles["main-container"]}>
       <div className={styles.container}>
@@ -140,14 +164,10 @@ function AuctionPage() {
             Descrição: {leilao?.descricao || "Carregando..."}
           </p>
           <p className={styles.price}>
-            Valor Inicial: R${" "}
-            {leilao ? leilao.valor_inicial.toFixed(2) : "Carregando..."}
+            Lance Atual: R$ {currentBid?.toFixed(2) || "0.00"}
           </p>
           <p className={styles.prazo}>
             Prazo: {leilao?.prazo_max_minutos} minutos
-          </p>
-          <p className={styles.prazo}>
-            Data/Hora: {leilao?.data_hora_realizacao}
           </p>
           <p className={styles.seller}>
             Vendedor: {vendedor?.nome || "Carregando..."}
@@ -156,18 +176,37 @@ function AuctionPage() {
       </div>
 
       <div className={styles.container}>
-        <button className={styles.button} onClick={handleBidSubmit}>
-          Fazer lance
+        <button
+          className={styles.button}
+          onClick={handleBidSubmit}
+          disabled={userLoading}
+        >
+          {userLoading ? "Carregando..." : `Dar lance (+ R$ 10,00)`}
         </button>
-        <h3>Lances feitos</h3>
+
+        <h3>Histórico de Lances</h3>
         <div className={styles["bids-list"]}>
-          {bids.map((bid, index) => (
-            <div key={index}>
-              <p>
-                {bid.username} fez um lance de R$ {bid.value.toFixed(2)}
-              </p>
-            </div>
-          ))}
+          {bids.length === 0 ? (
+            <p>Nenhum lance registrado ainda.</p>
+          ) : (
+            bids.map((bid, index) => {
+              console.log(`Rendering bid ${index + 1}:`, bid);
+              return (
+                <div key={bid.id} className={styles.bidItem}>
+                  <p>
+                    <strong>{bid.username}</strong> ofereceu{" "}
+                    <span className={styles.bidValue}>
+                      R$ {bid.value.toFixed(2)}
+                    </span>
+                    <br />
+                    <small>
+                      {new Date(bid.created_at).toLocaleTimeString()}
+                    </small>
+                  </p>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
     </div>
