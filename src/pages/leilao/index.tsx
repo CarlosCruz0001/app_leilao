@@ -5,7 +5,6 @@ import { Auction } from "../../models/Auction";
 import styles from "./style.module.css";
 import { Vendedor } from "../../models/Vendedor";
 
-
 function AuctionPage() {
   const { id, userId } = useParams<{ id: string; userId: string }>();
   const [leilaoModel, setLeilao] = useState<Auction | null>(null);
@@ -17,7 +16,7 @@ function AuctionPage() {
 
   const fetchLeilaoData = useCallback(async () => {
     console.log("Fetching auction data...");
-    
+
     if (!id) return;
     const { data, error } = await supabase
       .from("leilao")
@@ -78,7 +77,7 @@ function AuctionPage() {
       .select("id, value, user_id, username, created_at, auction_id")
       .eq("auction_id", id)
       .order("created_at", { ascending: false }); // Ordena decrescente
-  
+
     if (!error && data) {
       setBids(data); // Atualiza os lances com a lista ordenada
       setCurrentBid(data[0]?.value || leilaoModel?.valor_inicial || 0); // Define o maior lance ou o lance inicial
@@ -95,30 +94,32 @@ function AuctionPage() {
       console.error("User data is missing.");
       return;
     }
-  
+
     // Verifica se há lances existentes
     let newBidValue = 0;
-  
+
     if (bids.length === 0) {
       // Se não houver lances, o primeiro lance será o valor inicial
       newBidValue = leilaoModel?.valor_inicial || 0;
-      console.log("Primeiro lance, valor inicial: R$ ${newBidValue.toFixed(2)}");
+      console.log(
+        "Primeiro lance, valor inicial: R$ ${newBidValue.toFixed(2)}"
+      );
     } else {
       // Caso contrário, adiciona R$ 10 ao maior lance
       const highestBid = bids[0].value; // O maior lance é o primeiro da lista (decrescente)
       newBidValue = highestBid + 10;
       console.log("Lance subsequente, valor: R$ ${newBidValue.toFixed(2)}");
     }
-  
+
     console.log("Submitting bid with value: ${newBidValue}");
-  
+
     const { error } = await supabase.from("lances").insert({
       auction_id: id,
       user_id: userId,
       username: user.nome,
       value: newBidValue,
     });
-  
+
     if (error) {
       console.error("Error inserting bid:", error);
       alert("Falha ao processar o lance.");
@@ -128,13 +129,45 @@ function AuctionPage() {
     }
   };
 
+  // Memoriza a função para evitar que seja recriada em cada render
+  const updateAuctionWinner = useCallback(async () => {
+    if (!leilaoModel || bids.length === 0) return;
+
+    const highestBid = bids[0]; // O maior lance está sempre no índice 0, já que os lances são ordenados decrescentemente
+    const winnerId = highestBid.user_id;
+    const highestBidValue = highestBid.value;
+
+    try {
+      const { error } = await supabase
+        .from("leilao")
+        .update({
+          id_vencedor: winnerId,
+          maior_lance_vencedor: highestBidValue,
+        })
+        .eq("id", leilaoModel.id); // Atualiza o leilão com o id correspondente
+
+      if (error) {
+        console.error("Erro ao atualizar o vencedor do leilão:", error);
+      } else {
+        console.log(
+          "Leilão atualizado com sucesso. Vencedor:",
+          winnerId,
+          "Maior Lance:",
+          highestBidValue
+        );
+      }
+    } catch (error) {
+      console.error("Erro inesperado ao atualizar o leilão:", error);
+    }
+  }, [leilaoModel, bids, supabase]); // Certifique-se de incluir as dependências relevantes
+
   useEffect(() => {
     console.log("useEffect triggered - Fetching initial data...");
     fetchLeilaoData();
     fetchUserData();
     fetchBids(); // Busca lances iniciais
   }, [fetchLeilaoData, fetchUserData, fetchBids]);
-  
+
   useEffect(() => {
     if (leilaoModel) {
       console.log("Auction data received, fetching seller...");
@@ -165,18 +198,23 @@ function AuctionPage() {
     });
   }, [id, supabase]);
 
+  
   useEffect(() => {
     if (leilao) {
       console.log(`Leilão ${leilao.id} está no status ${leilao.status_id}`);
     }
   }, [leilao]);
-  console.log(`status 1 ${leilaoModel}`);
-  console.log(`status 2 ${leilao}`);
+
 
   // Adiciona a verificação do status_id no render
-  const isAuctionClosed = leilao||leilaoModel?.status_id === 3;
+  const isAuctionClosed = leilao || leilaoModel?.status_id === 3;
   console.log(`status ${isAuctionClosed}`);
-  
+
+  // No useEffect, você pode agora chamar essa função sem problemas
+  useEffect(() => {
+      updateAuctionWinner(); 
+      }, [ updateAuctionWinner]); 
+
 
   return (
     <div className={styles["main-container"]}>
@@ -190,7 +228,9 @@ function AuctionPage() {
           />
         </div>
         <div className={styles.cardContent}>
-          <h2 className={styles.title}>{leilaoModel?.titulo || "Carregando..."}</h2>
+          <h2 className={styles.title}>
+            {leilaoModel?.titulo || "Carregando..."}
+          </h2>
           <p className={styles.description}>
             Descrição: {leilaoModel?.descricao || "Carregando..."}
           </p>
@@ -240,9 +280,7 @@ function AuctionPage() {
                     R$ {bid.value.toFixed(2)}
                   </span>
                   <br />
-                  <small>
-                    {new Date(bid.created_at).toLocaleTimeString()}
-                  </small>
+                  <small>{new Date(bid.created_at).toLocaleTimeString()}</small>
                 </p>
               </div>
             );
