@@ -95,3 +95,60 @@ body {
   font-size: 16px;
   color: #333;
 }
+
+.cardImage {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 120px;
+  overflow: hidden;
+}
+
+.image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+/* Título do leilão */
+.container h1 {
+  font-size: 24px;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+/* Parágrafo do lance atual */
+.container p {
+  font-size: 18px;
+  margin: 20px 0;
+  color: #555;
+}
+
+/* Estilo do campo de entrada para o lance */
+.input {
+  padding: 10px;
+  font-size: 16px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  width: 100%;
+  max-width: 250px;
+  margin-bottom: 15px;
+  box-sizing: border-box;
+}
+
+/* Estilo do botão de dar lance */
+.button {
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  transition: background-color 0.3s;
+}
+
+/* Efeito de hover no botão */
+.button:hover {
+  background-color: #45a049;
+}

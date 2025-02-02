@@ -23,7 +23,7 @@ const routes: RouteObject[] = [
     element: <CreateAuctionScreen />,
   },
   {
-    path: "/Leilao/:id",
+    path: "/Leilao/:id/:userId", // Incluindo o ID do usuário na URL
     element: <AuctionPage />,
   },
 ];

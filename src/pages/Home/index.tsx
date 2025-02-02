@@ -9,12 +9,12 @@ const Home = () => {
   const { supabase } = useContext(SocketContext);
   const [user, setUser] = useState<any>(null);
   const [userType, setUserType] = useState<number | null>(null);
+  const [userId, setUserId] = useState<number | null>(null); // Novo estado para armazenar o ID da tabela usuario
   const [loading, setLoading] = useState(true);
   const [leiloes, setLeiloes] = useState<any[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Busca os leilões disponíveis no banco
     const getLeiloes = async () => {
       console.log("Iniciando busca de leilões...");
       const { data, error } = await supabase.from("leilao").select("*");
@@ -25,51 +25,50 @@ const Home = () => {
         setLeiloes(data || []);
       }
     };
-
-    // Verifica se existe um usuário autenticado
+  
     const getUser = async () => {
       console.log("Buscando usuário...");
-      const {
-        data: { user },
-        error,
-      } = await supabase.auth.getUser();
-
+      const { data: { user }, error } = await supabase.auth.getUser();
+  
       if (error) {
         console.error("Erro ao obter o usuário:", error.message);
       }
-
+  
       if (user) {
         setUser(user);
         console.log("Usuário autenticado:", user);
-
-        // Consultar o tipo de usuário pelo email
+  
         const { data, error: userTypeError } = await supabase
-          .from("usuario") // Supondo que sua tabela de usuários se chame 'usuarios'
-          .select("tipo_de_usuario_id")
-          .eq("email", user.email) // Usando o email para consultar o tipo de usuário
+          .from("usuario")
+          .select("id, tipo_de_usuario_id")
+          .eq("email", user.email)
           .single();
-
+  
         if (userTypeError) {
-          console.error(
-            "Erro ao obter o tipo de usuário:",
-            userTypeError.message
-          );
+          console.error("Erro ao obter o tipo de usuário:", userTypeError.message);
         }
-
+  
         if (data) {
           console.log("Tipo de usuário encontrado:", data.tipo_de_usuario_id);
-          setUserType(data.tipo_de_usuario_id); // 1 para vendedor, 2 para comprador
-        } else {
-          console.log("Nenhum tipo de usuário encontrado.");
+          setUserType(data.tipo_de_usuario_id);
+          setUserId(data.id);
         }
       }
-
-      setLoading(false);
+  
+      setLoading(false); // Atualiza o estado de loading após a verificação do usuário
     };
-
+  
     getLeiloes();
     getUser();
   }, [supabase]);
+  
+  // Garantir que o redirecionamento para login ocorra apenas após a carga completa
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/login"); // Redireciona para o login caso o usuário não esteja autenticado
+    }
+  }, [loading, user, navigate]);
+  
 
   const handleLogout = async () => {
     console.log("Iniciando logout...");
@@ -80,22 +79,27 @@ const Home = () => {
       console.log("Logout realizado com sucesso.");
       setUser(null);
       setUserType(null);
+      setUserId(null); // Limpar o ID do usuário ao fazer logout
       navigate("/login");
     }
   };
 
   // Função para redirecionar caso o status_id seja 2
   const handleRedirectIfStatusIsTwo = (status_id: number, leilaoId: number) => {
-    console.log(
-      `Status do leilão (status_id): ${status_id}, Leilão ID: ${leilaoId}` 
-    ); 
+    if (!user || !userId) {
+      console.log("Usuário não autenticado ou sem ID. Redirecionando para login...");
+      navigate("/login"); // Redireciona para login se o usuário não estiver autenticado
+      return;
+    }
+  
     if (status_id === 2) {
       console.log("Redirecionando para a página do leilão...");
-      navigate(`/Leilao/${leilaoId}`);
+      navigate(`/Leilao/${leilaoId}/${userId}`); // Passando o ID da tabela usuario
     } else {
       console.log("Status não é 2, não redirecionando.");
     }
   };
+  
 
   return (
     <div className={styles.container}>
@@ -103,8 +107,7 @@ const Home = () => {
         {loading ? (
           <p>Carregando...</p>
         ) : (
-          <>
-            {user ? (
+          <>{user ? (
               <>
                 <p className={styles.userGreeting}>Bem-vindo, {user.email}</p>
 
