@@ -3,10 +3,8 @@ import { useParams } from "react-router-dom";
 import { SocketContext } from "../../context/SocketContext";
 import { Auction } from "../../models/Auction";
 import styles from "./style.module.css";
+import { Vendedor } from "../../models/Vendedor";
 
-interface Vendedor {
-  nome: string;
-}
 
 function AuctionPage() {
   const { id, userId } = useParams<{ id: string; userId: string }>();
@@ -19,6 +17,7 @@ function AuctionPage() {
 
   const fetchLeilaoData = useCallback(async () => {
     console.log("Fetching auction data...");
+    
     if (!id) return;
     const { data, error } = await supabase
       .from("leilao")
@@ -166,8 +165,18 @@ function AuctionPage() {
     });
   }, [id, supabase]);
 
+  useEffect(() => {
+    if (leilao) {
+      console.log(`Leilão ${leilao.id} está no status ${leilao.status_id}`);
+    }
+  }, [leilao]);
+  console.log(`status 1 ${leilaoModel}`);
+  console.log(`status 2 ${leilao}`);
+
   // Adiciona a verificação do status_id no render
-  const isAuctionClosed = leilaoModel?.status_id === 3;
+  const isAuctionClosed = leilao||leilaoModel?.status_id === 3;
+  console.log(`status ${isAuctionClosed}`);
+  
 
   return (
     <div className={styles["main-container"]}>

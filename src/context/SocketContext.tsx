@@ -1,34 +1,13 @@
 import { ReactNode, createContext, useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
+import { Auction } from "../models/Auction";
+import { Bid } from "../models/Bid";
+import { SocketContextType } from "../models/SocketContextType";
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-export type Bid = {
-  id: number;
-  value: number;
-  user_id: string;
-  username: string;
-  created_at: string;
-  auction_id: string;
-};
-
-export type Auction = {
-  id: number;
-  status_id: number;
-  data_hora_realizacao: string; // ISO format
-};
-
-type SocketContextType = {
-  supabase: typeof supabase;
-  bids: Bid[];
-  currentBid: number | null;
-  leilao: Auction | null; // Adiciona a propriedade leilao
-  setBids: React.Dispatch<React.SetStateAction<Bid[]>>;
-  setCurrentBid: React.Dispatch<React.SetStateAction<number | null>>;
-  updateAuctionStatus: () => void;
-};
 
 const initialValue: SocketContextType = {
   supabase,
@@ -52,7 +31,6 @@ export const SocketContextProvider = ({ children }: Props) => {
   const [currentBid, setCurrentBid] = useState<number | null>(null);
   const [leilao, setLeilao] = useState<Auction | null>(null);
 
-
   useEffect(() => {
     console.log("Setting up real-time subscription...");
 
@@ -65,7 +43,9 @@ export const SocketContextProvider = ({ children }: Props) => {
           const newBid = payload.new as Bid;
           console.log("Novo lance recebido:", newBid);
           setBids((prev) => [newBid, ...prev]);
-          setCurrentBid((prevBid) => (newBid.value > (prevBid || 0) ? newBid.value : prevBid));
+          setCurrentBid((prevBid) =>
+            newBid.value > (prevBid || 0) ? newBid.value : prevBid
+          );
         }
       )
       .on(
@@ -74,8 +54,12 @@ export const SocketContextProvider = ({ children }: Props) => {
         (payload) => {
           const updatedBid = payload.new as Bid;
           console.log("Lance atualizado:", updatedBid);
-          setBids((prev) => prev.map((bid) => (bid.id === updatedBid.id ? updatedBid : bid)));
-          setCurrentBid((prevBid) => (updatedBid.value > (prevBid || 0) ? updatedBid.value : prevBid));
+          setBids((prev) =>
+            prev.map((bid) => (bid.id === updatedBid.id ? updatedBid : bid))
+          );
+          setCurrentBid((prevBid) =>
+            updatedBid.value > (prevBid || 0) ? updatedBid.value : prevBid
+          );
         }
       )
       .on(
@@ -89,33 +73,28 @@ export const SocketContextProvider = ({ children }: Props) => {
       )
       .subscribe();
 
-        // Canal para status de leilão
-  const auctionChannel = supabase
-  .channel("realtime_auctions")
-  .on(
-    "postgres_changes",
-    { event: "UPDATE", schema: "public", table: "leilao" },
-    (payload) => {
-      const updatedAuction = payload.new as Auction;
-      console.log("Leilão atualizado:", updatedAuction);
-      // Verifica se o status_id foi alterado de 2 para 3
-      if (updatedAuction.status_id === 3) {
-        setLeilao((prevLeilao) => {
-          if (prevLeilao?.id === updatedAuction.id) {
-            return { ...prevLeilao, status_id: updatedAuction.status_id };
-          }
-          return prevLeilao;
-        });
-      }
-    }
-  )
-  .subscribe();
-
-
+    // Canal para status de leilão
+    const auctionChannel = supabase
+      .channel("realtime:leilao") // Nome do canal ajustado
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "leilao" },
+        (payload) => {
+          const updatedAuction = payload.new as Auction;
+          console.log("Leilão atualizado:", updatedAuction);
+          if (updatedAuction.status_id === 3) {
+            setLeilao((prevLeilao) => ({
+              ...prevLeilao,
+              ...updatedAuction
+            }));
+        }
+        }
+      )
+      .subscribe();
 
     // Função para verificar leilões e atualizar status 2
     const checkAuctionStatusToTwo = async () => {
-      console.log("Verificando leilões que precisam de atualização...");
+      //console.log("Verificando leilões que precisam de atualização...");
 
       const now = new Date();
       now.setHours(now.getHours() - 4); // Ajuste para UTC-4
@@ -132,7 +111,7 @@ export const SocketContextProvider = ({ children }: Props) => {
       }
 
       if (!auctions.length) {
-        console.log("Nenhum leilão precisa ser atualizado.");
+        //console.log("Nenhum leilão precisa ser atualizado.");
         return;
       }
 
@@ -157,50 +136,47 @@ export const SocketContextProvider = ({ children }: Props) => {
 
     /////////////////////////////////////////
 
+    // Função para verificar leilões e atualizar status 2
+    const checkAuctionStatusToThree = async () => {
+      //console.log("Verificando leilões que precisam de atualização...");
 
+      const now = new Date();
+      now.setHours(now.getHours() - 4); // Ajuste para UTC-4
 
-       // Função para verificar leilões e atualizar status 2
-       const checkAuctionStatusToThree = async () => {
-        console.log("Verificando leilões que precisam de atualização...");
-  
-        const now = new Date();
-        now.setHours(now.getHours() - 4); // Ajuste para UTC-4
-  
-        const { data: auctions, error } = await supabase
+      const { data: auctions, error } = await supabase
+        .from("leilao")
+        .select("id, status_id, data_hora_finalizacao")
+        .eq("status_id", 2) // Apenas leilões que ainda não mudaram
+        .lte("data_hora_finalizacao", now.toISOString());
+
+      if (error) {
+        console.error("Erro ao buscar leilões:", error);
+        return;
+      }
+
+      if (!auctions.length) {
+        //console.log("Nenhum leilão precisa ser atualizado.");
+        return;
+      }
+
+      console.log(`Atualizando ${auctions.length} leilões para status 3...`);
+      for (const auction of auctions) {
+        const { error: updateError } = await supabase
           .from("leilao")
-          .select("id, status_id, data_hora_finalizacao")
-          .eq("status_id", 2) // Apenas leilões que ainda não mudaram
-          .lte("data_hora_finalizacao", now.toISOString());
-  
-        if (error) {
-          console.error("Erro ao buscar leilões:", error);
-          return;
-        }
-  
-        if (!auctions.length) {
-          console.log("Nenhum leilão precisa ser atualizado.");
-          return;
-        }
-  
-        console.log(`Atualizando ${auctions.length} leilões para status 3...`);
-        for (const auction of auctions) {
-          const { error: updateError } = await supabase
-            .from("leilao")
-            .update({ status_id: 3 })
-            .eq("id", auction.id);
-  
-          if (updateError) {
-            console.error(`Erro ao atualizar leilão ${auction.id}:`, updateError);
-          } else {
-            console.log(`Leilão ${auction.id} atualizado para status 2.`);
-          }
-        }
-      };
-  
-      // Inicia a verificação imediatamente e depois a cada 1 minuto
-      checkAuctionStatusToThree();
-      const intervalId3 = setInterval(checkAuctionStatusToThree, 60 * 10);
+          .update({ status_id: 3 })
+          .eq("id", auction.id);
 
+        if (updateError) {
+          console.error(`Erro ao atualizar leilão ${auction.id}:`, updateError);
+        } else {
+          console.log(`Leilão ${auction.id} atualizado para status 2.`);
+        }
+      }
+    };
+
+    // Inicia a verificação imediatamente e depois a cada 1 minuto
+    checkAuctionStatusToThree();
+    const intervalId3 = setInterval(checkAuctionStatusToThree, 60 * 10);
 
     return () => {
       console.log("Unsubscribing from channel...");
@@ -212,7 +188,17 @@ export const SocketContextProvider = ({ children }: Props) => {
   }, []);
 
   return (
-    <SocketContext.Provider value={{ supabase, bids, currentBid, leilao, setBids, setCurrentBid, updateAuctionStatus: () => {} }}>
+    <SocketContext.Provider
+      value={{
+        supabase,
+        bids,
+        currentBid,
+        leilao,
+        setBids,
+        setCurrentBid,
+        updateAuctionStatus: () => {},
+      }}
+    >
       {children}
     </SocketContext.Provider>
   );
