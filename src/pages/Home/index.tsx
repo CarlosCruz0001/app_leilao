@@ -50,7 +50,10 @@ const Home = () => {
           .single();
 
         if (userTypeError) {
-          console.error("Erro ao obter o tipo de usuário:", userTypeError.message);
+          console.error(
+            "Erro ao obter o tipo de usuário:",
+            userTypeError.message
+          );
         }
 
         if (data) {
@@ -83,7 +86,9 @@ const Home = () => {
 
   // Função para redirecionar caso o status_id seja 2
   const handleRedirectIfStatusIsTwo = (status_id: number, leilaoId: number) => {
-    console.log(`Status do leilão (status_id): ${status_id}, Leilão ID: ${leilaoId}`); // Debug: Verifica status e ID
+    console.log(
+      `Status do leilão (status_id): ${status_id}, Leilão ID: ${leilaoId}` 
+    ); 
     if (status_id === 2) {
       console.log("Redirecionando para a página do leilão...");
       navigate(`/Leilao/${leilaoId}`);
@@ -94,25 +99,6 @@ const Home = () => {
 
   return (
     <div className={styles.container}>
-      <div className={styles.containerLeiloes}>
-        <h2>Leilões</h2>
-        <div>
-          {/* Itera sobre a lista de leilões e renderiza um LeilaoCard para cada ID */}
-          {leiloes.length > 0 ? (
-            leiloes.map((leilao) => (
-              <div 
-                key={leilao.id} 
-                onClick={() => handleRedirectIfStatusIsTwo(leilao.status_id, leilao.id)} 
-                style={{ cursor: "pointer" }} // Adicionando cursor para indicar que é clicável
-              >
-                <LeilaoCard leilaoId={leilao.id} />
-              </div>
-            ))
-          ) : (
-            <p>Nenhum leilão disponível no momento.</p>
-          )}
-        </div>
-      </div>
       <div className={styles.containerBotoes}>
         {loading ? (
           <p>Carregando...</p>
@@ -152,6 +138,27 @@ const Home = () => {
             )}
           </>
         )}
+      </div>
+      <div className={styles.containerLeiloes}>
+        <h2>Leilões</h2>
+        <div>
+          {/* Itera sobre a lista de leilões e renderiza um LeilaoCard para cada ID */}
+          {leiloes.length > 0 ? (
+            leiloes.map((leilao) => (
+              <div
+                key={leilao.id}
+                onClick={() =>
+                  handleRedirectIfStatusIsTwo(leilao.status_id, leilao.id)
+                }
+                style={{ cursor: "pointer" }} // Adicionando cursor para indicar que é clicável
+              >
+                <LeilaoCard leilaoId={leilao.id} />
+              </div>
+            ))
+          ) : (
+            <p>Nenhum leilão disponível no momento.</p>
+          )}
+        </div>
       </div>
     </div>
   );
