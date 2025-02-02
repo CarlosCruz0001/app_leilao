@@ -3,17 +3,32 @@ import { useNavigate } from "react-router-dom";
 import { useContext } from "react";
 import styles from "./styles.module.css";
 import { SocketContext } from "../../context/SocketContext";
+import LeilaoCard from "../../components/leilaoCard";
 
 const Home = () => {
   const { supabase } = useContext(SocketContext);
   const [user, setUser] = useState<any>(null);
   const [userType, setUserType] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [leiloes, setLeiloes] = useState<any[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Busca os leilões disponíveis no banco
+    const getLeiloes = async () => {
+      console.log("Iniciando busca de leilões...");
+      const { data, error } = await supabase.from("leilao").select("*");
+      if (error) {
+        console.error("Erro ao obter leilões:", error.message);
+      } else {
+        console.log("Leilões recebidos:", data);
+        setLeiloes(data || []);
+      }
+    };
+
     // Verifica se existe um usuário autenticado
     const getUser = async () => {
+      console.log("Buscando usuário...");
       const {
         data: { user },
         error,
@@ -35,10 +50,7 @@ const Home = () => {
           .single();
 
         if (userTypeError) {
-          console.error(
-            "Erro ao obter o tipo de usuário:",
-            userTypeError.message
-          );
+          console.error("Erro ao obter o tipo de usuário:", userTypeError.message);
         }
 
         if (data) {
@@ -52,17 +64,31 @@ const Home = () => {
       setLoading(false);
     };
 
+    getLeiloes();
     getUser();
   }, [supabase]);
 
   const handleLogout = async () => {
+    console.log("Iniciando logout...");
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error("Erro ao sair:", error.message);
     } else {
+      console.log("Logout realizado com sucesso.");
       setUser(null);
       setUserType(null);
       navigate("/login");
+    }
+  };
+
+  // Função para redirecionar caso o status_id seja 2
+  const handleRedirectIfStatusIsTwo = (status_id: number, leilaoId: number) => {
+    console.log(`Status do leilão (status_id): ${status_id}, Leilão ID: ${leilaoId}`); // Debug: Verifica status e ID
+    if (status_id === 2) {
+      console.log("Redirecionando para a página do leilão...");
+      navigate(`/Leilao/${leilaoId}`);
+    } else {
+      console.log("Status não é 2, não redirecionando.");
     }
   };
 
@@ -70,7 +96,22 @@ const Home = () => {
     <div className={styles.container}>
       <div className={styles.containerLeiloes}>
         <h2>Leilões</h2>
-        <p>Aqui virá os cards dos leilões</p>
+        <div>
+          {/* Itera sobre a lista de leilões e renderiza um LeilaoCard para cada ID */}
+          {leiloes.length > 0 ? (
+            leiloes.map((leilao) => (
+              <div 
+                key={leilao.id} 
+                onClick={() => handleRedirectIfStatusIsTwo(leilao.status_id, leilao.id)} 
+                style={{ cursor: "pointer" }} // Adicionando cursor para indicar que é clicável
+              >
+                <LeilaoCard leilaoId={leilao.id} />
+              </div>
+            ))
+          ) : (
+            <p>Nenhum leilão disponível no momento.</p>
+          )}
+        </div>
       </div>
       <div className={styles.containerBotoes}>
         {loading ? (

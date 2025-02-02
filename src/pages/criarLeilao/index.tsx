@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { SocketContext } from "../../context/SocketContext";
 import styles from "./style.module.css";
@@ -12,13 +12,57 @@ const CreateAuctionScreen = () => {
   const [dataHoraRealizacao, setDataHoraRealizacao] = useState("");
   const [error, setError] = useState("");
   const [imageUrlPreview, setImageUrlPreview] = useState<string | null>(null); // Para a visualização da imagem
+  const [user, setUser] = useState<any>(null);
+  const [userId, setUserId] = useState<string | null>(null); 
+  const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
   const { supabase } = useContext(SocketContext);
 
+  useEffect(() => {
+    const getUser = async () => {
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
+
+      if (error) {
+        console.error("Erro ao obter o usuário:", error.message);
+        return;
+      }
+
+      if (user) {
+        setUser(user);
+        console.log("Usuário autenticado:", user);
+
+        // Consultar o ID do usuário pela tabela de usuários
+        const { data, error: userTypeError } = await supabase
+          .from("usuario")
+          .select("id")
+          .eq("email", user.email)
+          .single();
+
+        if (userTypeError) {
+          console.error("Erro ao obter o tipo de usuário:", userTypeError.message);
+        }
+
+        if (data) {
+          console.log("ID do usuário encontrado:", data.id);
+          setUserId(data.id); // Agora o ID é armazenado corretamente
+        } else {
+          console.log("Nenhum id de usuário encontrado.");
+        }
+      }
+
+      setLoading(false);
+    };
+
+    getUser();
+  }, [supabase]);
+
   const handleCreateAuction = async () => {
     console.log("Iniciando criação do leilão...");
-
+  
     if (
       !title ||
       !description ||
@@ -31,56 +75,53 @@ const CreateAuctionScreen = () => {
       console.error("Erro: Campos obrigatórios não preenchidos");
       return;
     }
-
+  
     try {
       console.log("Enviando imagem para o Supabase...");
       const { data, error: uploadError } = await supabase.storage
         .from("auction-images")
         .upload(`images/${Date.now()}_${image.name}`, image);
-
-      // Após o upload da imagem
+  
       if (uploadError) {
         console.error("Erro ao fazer upload da imagem", uploadError);
         throw new Error("Erro ao fazer upload da imagem");
       }
-
-      // Verificar se o caminho está presente
+  
       if (!data?.path) {
         throw new Error("Caminho da imagem não retornado pelo Supabase");
       }
-
-      // Obter a URL pública CORRETA (publicUrl em vez de publicURL)
+  
       const {
         data: { publicUrl },
       } = supabase.storage.from("auction-images").getPublicUrl(data.path);
-
+  
       const imageUrl = publicUrl;
-
-      console.log("Imagem enviada com sucesso:", imageUrl); // Agora deve mostrar a URL
-
+  
+      console.log("Imagem enviada com sucesso:", imageUrl);
+  
       console.log('Inserindo leilão na tabela "leilao"...');
       const { error } = await supabase.from("leilao").insert([
         {
           titulo: title,
           descricao: description,
           valor_inicial: parseFloat(initialValue),
-          foto: imageUrl || "", // Garantir que foto não seja null
+          foto: imageUrl || "",
           prazo_max_minutos: parseInt(duration),
           data_hora_criacao: new Date().toISOString(),
-          data_hora_finalizacao: new Date(dataHoraRealizacao).toISOString(),
-          status_id: 1, // ID do status
-          id_vendedor: 1, // ID do vendedor (ajuste conforme necessário)
-          data_hora_realizacao: new Date().toISOString(),
+          status_id: 1,
+          id_vendedor: userId, // Usando userId corretamente
+          data_hora_realizacao: dataHoraRealizacao, // Usando a data escolhida pelo usuário
         },
       ]);
-
+  
       if (error) {
         console.error("Erro ao criar o leilão", error);
         throw new Error("Erro ao criar o leilão");
       }
-
+  
       console.log("Leilão criado com sucesso!");
       alert("Leilão criado com sucesso!");
+  
       // Resetando os campos
       setTitle("");
       setDescription("");
@@ -90,12 +131,13 @@ const CreateAuctionScreen = () => {
       setDataHoraRealizacao("");
       setError("");
       setImageUrlPreview(null);
-      // navigate("/");  // Navegar para a página inicial
+      navigate("/");  // Navegar para a página inicial
     } catch (err) {
       console.error("Erro no processo de criação do leilão:", err);
       setError((err as Error).message || "Ocorreu um erro!");
     }
   };
+  
 
   const handleImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -121,48 +163,33 @@ const CreateAuctionScreen = () => {
           type="text"
           placeholder="Título do Leilão"
           value={title}
-          onChange={(e) => {
-            console.log("Título alterado para:", e.target.value);
-            setTitle(e.target.value);
-          }}
+          onChange={(e) => setTitle(e.target.value)}
         />
         <textarea
           className={styles.textarea}
           placeholder="Descrição do Leilão"
           value={description}
-          onChange={(e) => {
-            console.log("Descrição alterada para:", e.target.value);
-            setDescription(e.target.value);
-          }}
+          onChange={(e) => setDescription(e.target.value)}
         />
         <input
           className={styles.input}
           type="number"
           placeholder="Valor Inicial"
           value={initialValue}
-          onChange={(e) => {
-            console.log("Valor Inicial alterado para:", e.target.value);
-            setInitialValue(e.target.value);
-          }}
+          onChange={(e) => setInitialValue(e.target.value)}
         />
         <input
           className={styles.input}
           type="number"
           placeholder="Tempo de Duração (em minutos)"
           value={duration}
-          onChange={(e) => {
-            console.log("Duração alterada para:", e.target.value);
-            setDuration(e.target.value);
-          }}
+          onChange={(e) => setDuration(e.target.value)}
         />
         <input
           className={styles.input}
           type="datetime-local"
           value={dataHoraRealizacao}
-          onChange={(e) => {
-            console.log("Data e Hora alterada para:", e.target.value);
-            setDataHoraRealizacao(e.target.value);
-          }}
+          onChange={(e) => setDataHoraRealizacao(e.target.value)}
         />
         <input
           className={styles.input}

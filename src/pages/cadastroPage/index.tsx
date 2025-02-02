@@ -16,7 +16,7 @@ const SignupScreen = () => {
 
   const handleSignup = async () => {
     console.log("Iniciando handleSignup");
-    
+
     if (password !== confirmPassword) {
       console.warn("Erro: As senhas não coincidem.");
       alert("Erro: As senhas não coincidem.");
@@ -25,7 +25,10 @@ const SignupScreen = () => {
 
     setLoading(true);
     console.log("Supabase Client Status:", supabase ? "OK" : "FALHA");
-    console.log("Env Variables:", import.meta.env.VITE_SUPABASE_URL ? "OK" : "FALHA");
+    console.log(
+      "Env Variables:",
+      import.meta.env.VITE_SUPABASE_URL ? "OK" : "FALHA"
+    );
 
     try {
       console.log("Tentando criar usuário com email:", email);
@@ -35,12 +38,16 @@ const SignupScreen = () => {
       });
 
       if (authError) {
-        console.error("Erro ao criar usuário de autenticação:", authError.message);
+        console.error(
+          "Erro ao criar usuário de autenticação:",
+          authError.message
+        );
         throw new Error(authError.message);
       }
 
       console.log("Usuário de autenticação criado com sucesso.");
-      const tipoDeUsuarioId = role === "user" ? 1 : 2;
+      const tipoDeUsuarioId = role === "user" ? 2 : 1;
+      console.log("Tipo de usuário:", role, "ID:", tipoDeUsuarioId);
 
       console.log("Inserindo usuário na tabela 'usuario'");
       const { error: dbError } = await supabase.from("usuario").insert([
@@ -52,7 +59,10 @@ const SignupScreen = () => {
       ]);
 
       if (dbError) {
-        console.error("Erro ao inserir usuário no banco de dados:", dbError.message);
+        console.error(
+          "Erro ao inserir usuário no banco de dados:",
+          dbError.message
+        );
         throw new Error(dbError.message);
       }
 
@@ -107,13 +117,17 @@ const SignupScreen = () => {
       </div>
       <div className={styles.roleContainer}>
         <button
-          className={`${styles.roleButton} ${role === "user" ? styles.selectedRole : ""}`}
+          className={`${styles.roleButton} ${
+            role === "user" ? styles.selectedRole : ""
+          }`}
           onClick={() => setRole("user")}
         >
           Usuário
         </button>
         <button
-          className={`${styles.roleButton} ${role === "seller" ? styles.selectedRole : ""}`}
+          className={`${styles.roleButton} ${
+            role === "seller" ? styles.selectedRole : ""
+          }`}
           onClick={() => setRole("seller")}
         >
           Vendedor

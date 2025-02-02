@@ -1,0 +1,148 @@
+.card {
+    position: relative;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    width: 650px;
+    height: 400px;
+    margin: 20px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.2);
+  }
+  
+  .cardImage {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 120px;
+    overflow: hidden;
+  }
+  
+  .image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+  
+  .cardContent {
+    flex: 1;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    font-size: 0.9em;
+    margin: 5px 0;
+    flex-grow: 1;
+    line-height: 1.4;
+    overflow: visible;
+    white-space: normal;
+  }
+  
+  .title {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .description {
+    font-size: 0.9em;
+    margin: 5px 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+  }
+  
+  .price,
+  .prazo,
+  .status,
+  .vendedor,
+  .date {
+    font-size: 0.85em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .defaultStatus {
+    background-color: #f0f0f0;
+  }
+  
+  .defaultHoveredStatus {
+    background-color: #e0e0e0;
+  }
+  
+  .status1 {
+    background-color: lightblue;
+  }
+  
+  .status2 {
+    background-color: lightgreen;
+  }
+  
+  .status3 {
+    background-color: lightyellow;
+  }
+  
+  .status4 {
+    background-color: lightcoral;
+  }
+  
+  .hoveredStatus1 {
+    background-color: royalblue;
+  }
+  
+  .hoveredStatus2 {
+    background-color: darkgreen;
+  }
+  
+  .hoveredStatus3 {
+    background-color: gold;
+  }
+  
+  .hoveredStatus4 {
+    background-color: darkred;
+  }
+  
+  /* Novo estilo para o overlay de status */
+  .statusOverlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    font-size: 1.2em;
+    padding: 5px 10px;
+    border-radius: 5px;
+    z-index: 2;
+    opacity: 0; /* Inicialmente invisível */
+    transition: opacity 0.3s ease; /* Animação de transição */
+  }
+  
+  .statusOverlay.visible {
+    opacity: 1; /* Torna visível quando hover ativado */
+  }
+  
+  .statusOverlay span {
+    font-weight: bold;
+  }
+  
+  .loading {
+    text-align: center;
+    font-size: 1.2em;
+    color: #333;
+  }
+  

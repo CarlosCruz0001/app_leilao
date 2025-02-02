@@ -3,6 +3,7 @@ import Home from "../pages/Home";
 import SignupScreen from "../pages/cadastroPage";
 import LoginScreen from "../pages/loginPage";
 import CreateAuctionScreen from "../pages/criarLeilao";
+import AuctionPage from "../pages/leilao";
 
 const routes: RouteObject[] = [
   {
@@ -20,6 +21,10 @@ const routes: RouteObject[] = [
   {
     path: "/CriarLeilao",
     element: <CreateAuctionScreen />,
+  },
+  {
+    path: "/Leilao/:id",
+    element: <AuctionPage />,
   },
 ];
 
