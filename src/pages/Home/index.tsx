@@ -92,12 +92,14 @@ const Home = () => {
       return;
     }
   
-    if (status_id === 2) {
-      console.log("Redirecionando para a página do leilão...");
-      navigate(`/Leilao/${leilaoId}/${userId}`); // Passando o ID da tabela usuario
-    } else {
-      console.log("Status não é 2, não redirecionando.");
-    }
+
+    navigate(`/Leilao/${leilaoId}/${userId}`); // Passando o ID da tabela usuario
+   // if (status_id === 2) {
+    //  console.log("Redirecionando para a página do leilão...");
+      
+   // } else {
+   //   console.log("Status não é 2, não redirecionando.");
+   // }
   };
   
 

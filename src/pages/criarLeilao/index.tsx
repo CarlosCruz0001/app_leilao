@@ -63,14 +63,7 @@ const CreateAuctionScreen = () => {
   const handleCreateAuction = async () => {
     console.log("Iniciando criação do leilão...");
   
-    if (
-      !title ||
-      !description ||
-      !initialValue ||
-      !duration ||
-      !image ||
-      !dataHoraRealizacao
-    ) {
+    if (!title || !description || !initialValue || !duration || !image || !dataHoraRealizacao) {
       setError("Todos os campos devem ser preenchidos!");
       console.error("Erro: Campos obrigatórios não preenchidos");
       return;
@@ -91,19 +84,19 @@ const CreateAuctionScreen = () => {
         throw new Error("Caminho da imagem não retornado pelo Supabase");
       }
   
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("auction-images").getPublicUrl(data.path);
-  
-      const imageUrl = publicUrl;
+      const { data: publicUrlData } = supabase.storage.from("auction-images").getPublicUrl(data.path);
+      const imageUrl = publicUrlData.publicUrl;
   
       console.log("Imagem enviada com sucesso:", imageUrl);
   
       console.log('Inserindo leilão na tabela "leilao"...');
   
-      // Ajustar a data para UTC-4
+      const createdAt = new Date(); // Data e hora de criação do leilão
       const adjustedDate = new Date(dataHoraRealizacao);
-      adjustedDate.setHours(adjustedDate.getHours() - 4); // Subtrai 4 horas para UTC-4
+      adjustedDate.setHours(adjustedDate.getHours() - 4); // Ajustar para UTC-4
+  
+      const prazoEmMinutos = parseInt(duration);
+      const finalizacao = new Date(adjustedDate.getTime() + prazoEmMinutos * 60000); // Soma os minutos ao tempo de criação
   
       const { error } = await supabase.from("leilao").insert([
         {
@@ -111,11 +104,12 @@ const CreateAuctionScreen = () => {
           descricao: description,
           valor_inicial: parseFloat(initialValue),
           foto: imageUrl || "",
-          prazo_max_minutos: parseInt(duration),
-          data_hora_criacao: new Date().toISOString(),
+          prazo_max_minutos: prazoEmMinutos,
+          data_hora_criacao: createdAt.toISOString(),
+          data_hora_finalizacao: finalizacao.toISOString(), // Armazena a data e hora final
           status_id: 1,
-          id_vendedor: userId, // Usando userId corretamente
-          data_hora_realizacao: adjustedDate.toISOString(), // Usando a data ajustada para UTC-4
+          id_vendedor: userId,
+          data_hora_realizacao: adjustedDate.toISOString(),
         },
       ]);
   
@@ -127,7 +121,6 @@ const CreateAuctionScreen = () => {
       console.log("Leilão criado com sucesso!");
       alert("Leilão criado com sucesso!");
   
-      // Resetando os campos
       setTitle("");
       setDescription("");
       setInitialValue("");
@@ -136,12 +129,13 @@ const CreateAuctionScreen = () => {
       setDataHoraRealizacao("");
       setError("");
       setImageUrlPreview(null);
-      navigate("/");  // Navegar para a página inicial
+      navigate("/");
     } catch (err) {
       console.error("Erro no processo de criação do leilão:", err);
       setError((err as Error).message || "Ocorreu um erro!");
     }
   };
+  
   
   
 

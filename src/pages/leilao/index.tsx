@@ -10,11 +10,11 @@ interface Vendedor {
 
 function AuctionPage() {
   const { id, userId } = useParams<{ id: string; userId: string }>();
-  const [leilao, setLeilao] = useState<Auction | null>(null);
+  const [leilaoModel, setLeilao] = useState<Auction | null>(null);
   const [vendedor, setVendedor] = useState<Vendedor | null>(null);
   const [user, setUser] = useState<Vendedor | null>(null);
   const [userLoading, setUserLoading] = useState<boolean>(true);
-  const { supabase, bids, currentBid, setBids, setCurrentBid } =
+  const { supabase, bids, currentBid, leilao, setBids, setCurrentBid } =
     useContext(SocketContext);
 
   const fetchLeilaoData = useCallback(async () => {
@@ -37,11 +37,11 @@ function AuctionPage() {
 
   const fetchVendedorData = useCallback(async () => {
     console.log("Fetching seller data...");
-    if (!leilao?.id_vendedor) return;
+    if (!leilaoModel?.id_vendedor) return;
     const { data, error } = await supabase
       .from("usuario")
       .select("nome")
-      .eq("id", leilao.id_vendedor)
+      .eq("id", leilaoModel.id_vendedor)
       .single();
 
     if (!error && data) {
@@ -50,7 +50,7 @@ function AuctionPage() {
     } else {
       console.error("Error fetching seller data:", error);
     }
-  }, [supabase, leilao?.id_vendedor]);
+  }, [supabase, leilaoModel?.id_vendedor]);
 
   const fetchUserData = useCallback(async () => {
     console.log("Fetching user data...");
@@ -82,13 +82,12 @@ function AuctionPage() {
   
     if (!error && data) {
       setBids(data); // Atualiza os lances com a lista ordenada
-      setCurrentBid(data[0]?.value || leilao?.valor_inicial || 0); // Define o maior lance ou o lance inicial
+      setCurrentBid(data[0]?.value || leilaoModel?.valor_inicial || 0); // Define o maior lance ou o lance inicial
       console.log("Bids fetched:", data);
     } else {
       console.error("Error fetching bids:", error);
     }
-  }, [supabase, id, leilao?.valor_inicial, setCurrentBid, setBids]);
-  
+  }, [supabase, id, leilaoModel?.valor_inicial, setCurrentBid, setBids]);
 
   const handleBidSubmit = async () => {
     console.log("Handling bid submission...");
@@ -103,16 +102,16 @@ function AuctionPage() {
   
     if (bids.length === 0) {
       // Se não houver lances, o primeiro lance será o valor inicial
-      newBidValue = leilao?.valor_inicial || 0;
-      console.log(`Primeiro lance, valor inicial: R$ ${newBidValue.toFixed(2)}`);
+      newBidValue = leilaoModel?.valor_inicial || 0;
+      console.log("Primeiro lance, valor inicial: R$ ${newBidValue.toFixed(2)}");
     } else {
       // Caso contrário, adiciona R$ 10 ao maior lance
       const highestBid = bids[0].value; // O maior lance é o primeiro da lista (decrescente)
       newBidValue = highestBid + 10;
-      console.log(`Lance subsequente, valor: R$ ${newBidValue.toFixed(2)}`);
+      console.log("Lance subsequente, valor: R$ ${newBidValue.toFixed(2)}");
     }
   
-    console.log(`Submitting bid with value: ${newBidValue}`);
+    console.log("Submitting bid with value: ${newBidValue}");
   
     const { error } = await supabase.from("lances").insert({
       auction_id: id,
@@ -129,7 +128,6 @@ function AuctionPage() {
       fetchBids(); // Atualiza a lista de lances após o novo lance ser inserido
     }
   };
-  
 
   useEffect(() => {
     console.log("useEffect triggered - Fetching initial data...");
@@ -139,14 +137,38 @@ function AuctionPage() {
   }, [fetchLeilaoData, fetchUserData, fetchBids]);
   
   useEffect(() => {
-    if (leilao) {
+    if (leilaoModel) {
       console.log("Auction data received, fetching seller...");
       fetchVendedorData();
     }
-  }, [fetchVendedorData, leilao]);
-  
- 
-  
+  }, [fetchVendedorData, leilaoModel]);
+
+  useEffect(() => {
+    // Assumindo que o socket já está configurado para escutar as atualizações do status_id
+    const handleStatusUpdate = (newStatusId: number) => {
+      // Atualizando o estado do leilão com o novo status_id
+      setLeilao((prevLeilao) => {
+        if (prevLeilao) {
+          return {
+            ...prevLeilao,
+            status_id: newStatusId,
+          };
+        }
+        return null;
+      });
+    };
+
+    // Supondo que a função `onStatusUpdate` seja chamada sempre que o status_id for alterado
+    supabase.channel("auction-channel").on("UPDATE", (payload) => {
+      if (payload.new.id === id) {
+        handleStatusUpdate(payload.new.status_id);
+      }
+    });
+  }, [id, supabase]);
+
+  // Adiciona a verificação do status_id no render
+  const isAuctionClosed = leilaoModel?.status_id === 3;
+
   return (
     <div className={styles["main-container"]}>
       <div className={styles.container}>
@@ -154,20 +176,20 @@ function AuctionPage() {
         <div className={styles.cardImage}>
           <img
             className={styles.image}
-            src={leilao?.foto || ""}
-            alt={leilao?.titulo || "Imagem"}
+            src={leilaoModel?.foto || ""}
+            alt={leilaoModel?.titulo || "Imagem"}
           />
         </div>
         <div className={styles.cardContent}>
-          <h2 className={styles.title}>{leilao?.titulo || "Carregando..."}</h2>
+          <h2 className={styles.title}>{leilaoModel?.titulo || "Carregando..."}</h2>
           <p className={styles.description}>
-            Descrição: {leilao?.descricao || "Carregando..."}
+            Descrição: {leilaoModel?.descricao || "Carregando..."}
           </p>
           <p className={styles.price}>
             Lance Atual: R$ {currentBid?.toFixed(2) || "0.00"}
           </p>
           <p className={styles.prazo}>
-            Prazo: {leilao?.prazo_max_minutos} minutos
+            Prazo: {leilaoModel?.prazo_max_minutos} minutos
           </p>
           <p className={styles.seller}>
             Vendedor: {vendedor?.nome || "Carregando..."}
@@ -175,39 +197,48 @@ function AuctionPage() {
         </div>
       </div>
 
-      <div className={styles.container}>
-        <button
-          className={styles.button}
-          onClick={handleBidSubmit}
-          disabled={userLoading}
-        >
-          {userLoading ? "Carregando..." : `Dar lance (+ R$ 10,00)`}
-        </button>
-
-        <h3>Histórico de Lances</h3>
-        <div className={styles["bids-list"]}>
-          {bids.length === 0 ? (
-            <p>Nenhum lance registrado ainda.</p>
-          ) : (
-            bids.map((bid, index) => {
-              console.log(`Rendering bid ${index + 1}:`, bid);
-              return (
-                <div key={bid.id} className={styles.bidItem}>
-                  <p>
-                    <strong>{bid.username}</strong> ofereceu{" "}
-                    <span className={styles.bidValue}>
-                      R$ {bid.value.toFixed(2)}
-                    </span>
-                    <br />
-                    <small>
-                      {new Date(bid.created_at).toLocaleTimeString()}
-                    </small>
-                  </p>
-                </div>
-              );
-            })
-          )}
+      {/* Condicional para mostrar o botão de dar lance ou o card do vencedor */}
+      {isAuctionClosed ? (
+        <div className={styles.container}>
+          <h3>Vencedor</h3>
+          {/* Exiba o vencedor aqui, você pode adicionar mais detalhes conforme necessário */}
+          <p>O leilão foi encerrado. Vencedor: {bids[0]?.username}</p>
         </div>
+      ) : (
+        <div className={styles.container}>
+          <button
+            className={styles.button}
+            onClick={handleBidSubmit}
+            disabled={userLoading}
+          >
+            {userLoading ? "Carregando..." : "Dar lance (+ R$ 10,00)"}
+          </button>
+        </div>
+      )}
+
+      <h3>Histórico de Lances</h3>
+      <div className={styles["bids-list"]}>
+        {bids.length === 0 ? (
+          <p>Nenhum lance registrado ainda.</p>
+        ) : (
+          bids.map((bid, index) => {
+            console.log(`Rendering bid ${index + 1}:`, bid);
+            return (
+              <div key={bid.id} className={styles.bidItem}>
+                <p>
+                  <strong>{bid.username}</strong> ofereceu{" "}
+                  <span className={styles.bidValue}>
+                    R$ {bid.value.toFixed(2)}
+                  </span>
+                  <br />
+                  <small>
+                    {new Date(bid.created_at).toLocaleTimeString()}
+                  </small>
+                </p>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );
