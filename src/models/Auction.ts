@@ -1,7 +1,10 @@
 export type Auction = {
-  id: string;
-  imageURL: string;
-  title: string;
-  description: string;
-  initialBid: number;
+  titulo: string;
+  descricao: string;
+  valor_inicial: number;
+  prazo_max_minutos: number;
+  data_hora_realizacao: string;
+  status_id: number;
+  id_vendedor: number;
+  foto: string;
 };

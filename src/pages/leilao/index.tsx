@@ -1,29 +1,22 @@
 import React, { useState, useEffect, useContext, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { SocketContext } from "../../context/SocketContext";
+import { Bid } from "../../models/Bid";
+import { Auction } from "../../models/Auction";
 import styles from "./style.module.css";
-
-interface Leilao {
-  titulo: string;
-  descricao: string;
-  valor_inicial: number;
-  prazo_max_minutos: number;
-  data_hora_realizacao: string;
-  status_id: number;
-  id_vendedor: number;
-  foto: string;
-}
 
 interface Vendedor {
   nome: string;
 }
 
 function AuctionPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id, userId } = useParams<{ id: string; userId: string }>(); // id do leilão e userId do usuário
   const [currentBid, setCurrentBid] = useState<number | null>(null);
-  const [bids, setBids] = useState<string[]>([]);
-  const [leilao, setLeilao] = useState<Leilao | null>(null);
+  const [bids, setBids] = useState<Bid[]>([]);
+  const [leilao, setLeilao] = useState<Auction | null>(null);
   const [vendedor, setVendedor] = useState<Vendedor | null>(null);
+  const [user, setUser] = useState<Vendedor | null>(null);
+  const [userLoading, setUserLoading] = useState<boolean>(true);
   const { supabase } = useContext(SocketContext);
   const navigate = useNavigate();
 
@@ -33,7 +26,7 @@ function AuctionPage() {
     const { data, error } = await supabase
       .from("leilao")
       .select(
-        "titulo, descricao, valor_inicial, prazo_max_minutos, data_hora_realizacao, status_id, id_vendedor, foto, valor_inicial"
+        "titulo, descricao, valor_inicial, prazo_max_minutos, data_hora_realizacao, status_id, id_vendedor, foto"
       )
       .eq("id", id)
       .single();
@@ -43,7 +36,7 @@ function AuctionPage() {
     } else {
       console.log("Dados do leilão recebidos:", data);
       setLeilao(data);
-      setCurrentBid(data.valor_inicial); // Definindo o lance inicial após o carregamento
+      setCurrentBid(data.valor_inicial);
     }
   }, [supabase, id]);
 
@@ -64,28 +57,69 @@ function AuctionPage() {
     }
   }, [supabase, leilao?.id_vendedor]);
 
+  const fetchUserData = useCallback(async () => {
+    if (!userId) return;
+    console.log("Buscando dados do usuário para o ID:", userId);
+    setUserLoading(true);
+    const { data, error, count } = await supabase
+      .from("usuario")
+      .select("nome")
+      .eq("id", userId) // Usando o userId da URL
+      .single();
+
+    setUserLoading(false);
+
+    if (error) {
+      console.error("Erro ao buscar dados do usuário:", error);
+    } else {
+      if (count === 0) {
+        console.log("Nenhum usuário encontrado com o ID fornecido.");
+      } else if (data) {
+        console.log("Dados do usuário recebidos:", data);
+        setUser(data);
+      }
+    }
+  }, [supabase, userId]);
+
   const handleBidSubmit = () => {
+    if (userLoading) {
+      alert("Aguarde, estamos carregando seus dados...");
+      return;
+    }
+
+    if (!user) {
+      alert("Não foi possível identificar o usuário.");
+      return;
+    }
+
     if (currentBid === null) {
       console.log("Tentativa de lance antes de carregar o valor inicial.");
-      return; // Garante que o lance inicial não seja feito antes de carregar o valor
+      return;
     }
-    console.log("Valor atual do lance:", currentBid);
-    const newBid = currentBid + 10;
+
+    const newBid: Bid = {
+      username: user.nome, // Usando o nome do usuário carregado
+      value: currentBid + 10,
+      auctionId: id || "", // id do leilão
+    };
+
     console.log("Novo lance calculado:", newBid);
-    setCurrentBid(newBid); // Atualizando o valor do lance
-    setBids([...bids, `R$ ${newBid}`]);
-    alert(`Lance de R$ ${newBid} aceito!`);
+    setCurrentBid(newBid.value);
+    setBids([...bids, newBid]);
+
+    alert(`Lance de R$ ${newBid.value.toFixed(2)} aceito!`);
   };
 
   useEffect(() => {
     console.log("Carregando dados do leilão...");
     fetchLeilaoData();
-  }, [fetchLeilaoData]);
+    fetchUserData(); // Busca os dados do usuário logado
+  }, [fetchLeilaoData, fetchUserData]);
 
   useEffect(() => {
     if (leilao) {
       console.log("Dados do leilão carregados:", leilao);
-      fetchVendedorData();
+      fetchVendedorData(); // Busca os dados do vendedor quando o leilão for carregado
     }
   }, [fetchVendedorData, leilao]);
 
@@ -110,36 +144,30 @@ function AuctionPage() {
             {leilao ? leilao.valor_inicial.toFixed(2) : "Carregando..."}
           </p>
           <p className={styles.prazo}>
-            Prazo: {leilao?.prazo_max_minutos || "Carregando..."} minutos
+            Prazo: {leilao?.prazo_max_minutos} minutos
           </p>
-          <p className={styles.vendedor}>
+          <p className={styles.prazo}>
+            Data/Hora: {leilao?.data_hora_realizacao}
+          </p>
+          <p className={styles.seller}>
             Vendedor: {vendedor?.nome || "Carregando..."}
-          </p>
-          <p className={styles.date}>
-            Data de Realização:{" "}
-            {leilao
-              ? new Date(leilao.data_hora_realizacao).toLocaleString()
-              : "Carregando..."}
           </p>
         </div>
       </div>
-      <div>
+
+      <div className={styles.container}>
         <button className={styles.button} onClick={handleBidSubmit}>
-          Dar Lance (+10)
+          Fazer lance
         </button>
-        <div className={styles.container}>
-          <h1>Lances Dados</h1>
-          <div className={styles["bids-list"]}>
-            {bids.length === 0 ? (
-              <p>Nenhum lance ainda.</p>
-            ) : (
-              bids.map((bid, index) => (
-                <div key={index} className={styles["bid-item"]}>
-                  {bid}
-                </div>
-              ))
-            )}
-          </div>
+        <h3>Lances feitos</h3>
+        <div className={styles["bids-list"]}>
+          {bids.map((bid, index) => (
+            <div key={index}>
+              <p>
+                {bid.username} fez um lance de R$ {bid.value.toFixed(2)}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     </div>
